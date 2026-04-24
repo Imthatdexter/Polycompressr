@@ -8,9 +8,9 @@ import { getSecondsRemaining } from './utils/timeUtils';
 
 export default function App() {
   const { market, loading, error, refetch } = useMarket();
-  const { currentPrice, targetPrice, hourStart, history, reset: resetPrice } = usePrice(market);
+  const [lookbackHours, setLookbackHours] = useState(0);
+  const { currentPrice, targetPrice, hourStart, chartStart, history, reset: resetPrice } = usePrice(market, lookbackHours);
   const trend = useTrend(history, targetPrice);
-  const [padding, setPadding] = useState(0.5);
 
   // Handle hour transitions
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function App() {
         ) : error && !market ? (
           <div style={styles.error}>{error}</div>
         ) : (
-          <Chart history={history} targetPrice={targetPrice} hourStart={hourStart} />
+          <Chart history={history} targetPrice={targetPrice} chartStart={chartStart} hourStart={hourStart} />
         )}
       </div>
       <Sidebar
@@ -41,8 +41,8 @@ export default function App() {
         currentPrice={currentPrice}
         targetPrice={targetPrice}
         trend={trend}
-        padding={padding}
-        onPaddingChange={setPadding}
+        lookbackHours={lookbackHours}
+        onLookbackChange={setLookbackHours}
       />
     </div>
   );

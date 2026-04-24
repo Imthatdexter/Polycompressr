@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { createChart, LineSeries } from 'lightweight-charts';
 
-export default function Chart({ history, targetPrice, hourStart }) {
+export default function Chart({ history, targetPrice, chartStart, hourStart }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const seriesRef = useRef(null);
   const lineRef = useRef(null);
   const dataLenRef = useRef(0);
-  const setupDoneRef = useRef(false);
+  const lastDataSetRef = useRef(null);
 
   // Initialize chart
   useEffect(() => {
@@ -79,22 +79,30 @@ export default function Chart({ history, targetPrice, hourStart }) {
       seriesRef.current = null;
       lineRef.current = null;
       dataLenRef.current = 0;
-      setupDoneRef.current = false;
+      lastDataSetRef.current = null;
     };
   }, []);
 
   // Handle data updates
   useEffect(() => {
-    if (!seriesRef.current || !history.length || !hourStart) return;
+    if (!seriesRef.current || !history.length || !chartStart || !hourStart) return;
 
     const sortedData = [...history].sort((a, b) => a.time - b.time);
 
-    if (!setupDoneRef.current) {
-      setupDoneRef.current = true;
+    // Use a key based on chartStart to detect when lookback changes
+    const dataKey = `${chartStart}-${sortedData[0]?.time}`;
+
+    if (lastDataSetRef.current !== dataKey) {
+      // Full data reset: new market or lookback changed
+      lastDataSetRef.current = dataKey;
       dataLenRef.current = sortedData.length;
       seriesRef.current.setData(sortedData);
 
+      // Update target price line
       if (targetPrice) {
+        if (lineRef.current) {
+          seriesRef.current.removePriceLine(lineRef.current);
+        }
         lineRef.current = seriesRef.current.createPriceLine({
           price: targetPrice,
           color: '#f59e0b',
@@ -105,13 +113,12 @@ export default function Chart({ history, targetPrice, hourStart }) {
         });
       }
 
-      // Set initial visible range to show the full hour with empty space to the right
-      const hourStartSec = Math.floor(hourStart / 1000);
-      const hourEndSec = hourStartSec + 3600;
-      chartRef.current.timeScale().setVisibleRange({ from: hourStartSec, to: hourEndSec });
+      // Set visible range: from chartStart to hourStart + 1h
+      const fromSec = Math.floor(chartStart / 1000);
+      const toSec = Math.floor(hourStart / 1000) + 3600;
+      chartRef.current.timeScale().setVisibleRange({ from: fromSec, to: toSec });
     } else {
       // Live update: just push new data
-      // shiftVisibleRangeOnNewBar: false prevents auto-scroll
       if (sortedData.length > dataLenRef.current) {
         for (let i = dataLenRef.current; i < sortedData.length; i++) {
           seriesRef.current.update(sortedData[i]);
@@ -121,11 +128,11 @@ export default function Chart({ history, targetPrice, hourStart }) {
         seriesRef.current.update(sortedData[sortedData.length - 1]);
       }
     }
-  }, [history, targetPrice, hourStart]);
+  }, [history, targetPrice, chartStart, hourStart]);
 
   // Reset when target changes (new market)
   useEffect(() => {
-    setupDoneRef.current = false;
+    lastDataSetRef.current = null;
     dataLenRef.current = 0;
     if (lineRef.current && seriesRef.current) {
       seriesRef.current.removePriceLine(lineRef.current);

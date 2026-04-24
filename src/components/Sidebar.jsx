@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getSecondsRemaining, formatCountdown, formatHourET } from '../utils/timeUtils';
 
-export default function Sidebar({ market, currentPrice, targetPrice, trend, padding, onPaddingChange }) {
+const LOOKBACK_OPTIONS = [
+  { label: '1H', hours: 0 },
+  { label: '2H', hours: 1 },
+  { label: '4H', hours: 3 },
+  { label: '6H', hours: 5 },
+];
+
+export default function Sidebar({ market, currentPrice, targetPrice, trend, lookbackHours, onLookbackChange }) {
   const [countdown, setCountdown] = useState('--:--');
 
   useEffect(() => {
@@ -97,14 +104,22 @@ export default function Sidebar({ market, currentPrice, targetPrice, trend, padd
         <div style={styles.label}>TREND</div>
         {trend.direction ? (
           <div>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>Since last cross</div>
             <div style={{
               ...styles.trendDirection,
               color: trend.direction === 'above' ? '#22c55e' : '#ef4444',
             }}>
               {trend.direction === 'above' ? 'Above' : 'Below'} target for {trend.duration}
             </div>
+            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 6, marginBottom: 2 }}>Since market start</div>
+            <div style={{
+              ...styles.trendDirection,
+              color: trend.overallDirection === 'above' ? '#22c55e' : '#ef4444',
+            }}>
+              {trend.overallDirection === 'above' ? 'Above' : 'Below'} target for {trend.overallDuration}
+            </div>
             <div style={styles.trendPercent}>
-              {trend.abovePercent}% of ticks above target
+              {trend.abovePercent}% of time above target
             </div>
           </div>
         ) : (
@@ -113,18 +128,21 @@ export default function Sidebar({ market, currentPrice, targetPrice, trend, padd
       </div>
 
       <div style={styles.section}>
-        <div style={styles.label}>Y-AXIS PADDING</div>
-        <div style={styles.paddingRow}>
-          <input
-            type="range"
-            min="0.1"
-            max="2.0"
-            step="0.1"
-            value={padding}
-            onChange={e => onPaddingChange(parseFloat(e.target.value))}
-            style={styles.slider}
-          />
-          <span style={styles.paddingValue}>{padding}%</span>
+        <div style={styles.label}>CHART RANGE</div>
+        <div style={styles.lookbackRow}>
+          {LOOKBACK_OPTIONS.map(opt => (
+            <button
+              key={opt.hours}
+              onClick={() => onLookbackChange(opt.hours)}
+              style={{
+                ...styles.lookbackBtn,
+                background: lookbackHours === opt.hours ? '#3b82f6' : '#1f2937',
+                color: lookbackHours === opt.hours ? '#fff' : '#9ca3af',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -218,20 +236,20 @@ const styles = {
     fontSize: 13,
     color: '#6b7280',
   },
-  paddingRow: {
+  lookbackRow: {
     display: 'flex',
-    alignItems: 'center',
-    gap: 10,
+    gap: 6,
     marginTop: 4,
   },
-  slider: {
+  lookbackBtn: {
     flex: 1,
-    accentColor: '#3b82f6',
-  },
-  paddingValue: {
+    padding: '6px 0',
+    border: 'none',
+    borderRadius: 4,
     fontSize: 13,
-    color: '#9ca3af',
+    fontWeight: 600,
+    cursor: 'pointer',
+    transition: 'background 0.15s',
     fontVariantNumeric: 'tabular-nums',
-    minWidth: 36,
   },
 };
